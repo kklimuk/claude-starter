@@ -7,7 +7,12 @@
 #   path/to/claude-starter/init.sh <target-directory>
 #
 # Or run it directly from GitHub (no clone needed):
-#   curl -fsSL https://raw.githubusercontent.com/kklimuk/claude-starter/main/init.sh | sh -s -- <target-directory>
+#   sh -c "$(curl -fsSL https://raw.githubusercontent.com/kklimuk/claude-starter/main/init.sh)" -- <target-directory>
+#
+# (Use the `sh -c "$(curl ...)"` form, NOT `curl ... | sh`. The piped form
+#  hangs because stdin is the pipe carrying the script — there's no way to
+#  reattach it to the terminal for prompts without disconnecting the shell
+#  from the script it's reading.)
 #
 # Examples:
 #   ~/workspace/claude-starter/init.sh ~/workspace/my-new-project
@@ -16,15 +21,6 @@
 # POSIX sh, no bashisms. Tested under bash, dash, and busybox sh.
 
 set -eu
-
-# ─── Allow interactive prompts when piped from curl ───
-# When invoked via `curl ... | sh`, stdin is the pipe — `read` would never see
-# the user. Reattach stdin to the controlling terminal if one is actually
-# usable (the file existing isn't enough; sandboxed shells have /dev/tty but
-# can't open it).
-if [ ! -t 0 ] && (: </dev/tty) 2>/dev/null; then
-  exec </dev/tty
-fi
 
 # ─── Locate the template root (the dir this script lives in) ───
 SCRIPT_PATH="$0"

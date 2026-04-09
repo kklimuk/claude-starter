@@ -82,7 +82,7 @@ These keep tripping people up — don't undo them:
 - `readlink -f` is GNU-only. The script resolves symlinks with a manual loop.
 - `mktemp -d` without a template fails on macOS BSD `mktemp` in some configs. The script falls back to `mktemp -d -t claude-starter`.
 - `sed -i` needs a backup suffix on BSD sed (macOS). The script uses `sed -i.bak` then `rm -f "$file.bak"`.
-- `read` in a `curl | sh` invocation reads from the (now-empty) pipe, not the user. The script reattaches stdin to `/dev/tty` if one is actually openable (file existing isn't enough — sandboxed shells have `/dev/tty` but can't open it; the test is `(: </dev/tty) 2>/dev/null`).
+- **Don't pipe the script via `curl ... | sh`** — when sh reads its script from a pipe, there's no way to also read user input from the terminal without disconnecting the shell from the pipe (which causes a hang on the first prompt). The README uses `sh -c "$(curl ...)" -- target`, which passes the script as a string argument so stdin stays attached to the terminal naturally. Same pattern Homebrew and oh-my-zsh use.
 - `find ... -print0` is GNU-only. The script uses plain `find ... | while read` and tolerates the lack of null-delimited safety because none of the paths in this repo contain newlines.
 
 ## Testing

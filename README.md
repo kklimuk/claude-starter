@@ -28,12 +28,14 @@ No clone required — the init scripts self-bootstrap. They detect when they're 
 
 ```sh
 # Bootstrap a brand-new project folder
-curl -fsSL https://raw.githubusercontent.com/kklimuk/claude-starter/main/init.sh | sh -s -- ~/workspace/my-new-project
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/kklimuk/claude-starter/main/init.sh)" -- ~/workspace/my-new-project
 
 # Or layer onto an existing project
 cd ~/workspace/my-existing-project
-curl -fsSL https://raw.githubusercontent.com/kklimuk/claude-starter/main/init.sh | sh -s -- .
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/kklimuk/claude-starter/main/init.sh)" -- .
 ```
+
+> Use the `sh -c "$(curl ...)"` form, **not** `curl ... | sh`. The piped form hangs on the first prompt because stdin is the pipe carrying the script.
 
 ### Windows (PowerShell)
 
