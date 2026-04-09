@@ -70,7 +70,7 @@ The plugin's slash commands invoke the MCP server's tools. You need the MCP serv
 
 ```sh
 claude plugin marketplace add ChromeDevTools/chrome-devtools-mcp
-claude plugin install chrome-devtools-mcp@chrome-devtools-mcp
+claude plugin install chrome-devtools-mcp
 claude mcp add --scope project chrome-devtools -- npx -y chrome-devtools-mcp@latest
 ```
 
