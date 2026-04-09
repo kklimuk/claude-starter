@@ -1,0 +1,28 @@
+#!/bin/sh
+set -e
+
+echo "→ Biome: formatting + lint (auto-fix staged files)…"
+STAGED_BIOME=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|js|jsx|json|jsonc)$' || true)
+if [ -z "$STAGED_BIOME" ]; then
+  echo "   no Biome-eligible files staged, skipping."
+else
+  bunx biome check --write --staged .
+  echo "   done."
+fi
+
+echo "→ Dead code: unused exports + dependencies…"
+bunx knip-bun
+echo "   done."
+
+echo "→ TypeScript: type check (staged files)…"
+STAGED_TS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.tsx?$' || true)
+if [ -z "$STAGED_TS" ]; then
+  echo "   no TypeScript files staged, skipping."
+else
+  TMPCONFIG=".tsconfig-staged.json"
+  trap 'rm -f "$TMPCONFIG"' EXIT
+  FILES_JSON=$(echo "$STAGED_TS" | sed 's/.*/"&"/' | tr '\n' ',' | sed 's/,$//')
+  printf '{"extends":"./tsconfig.json","files":[%s],"include":[]}\n' "$FILES_JSON" > "$TMPCONFIG"
+  bunx tsc --noEmit --project "$TMPCONFIG"
+  echo "   done."
+fi

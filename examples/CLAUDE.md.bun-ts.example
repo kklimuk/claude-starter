@@ -1,0 +1,96 @@
+# inkling
+
+A collaborative text editor inspired by Notion. Real-time multiplayer editing with rich text formatting, a nestable page tree, cursor presence, and persistent storage.
+
+Default to using Bun instead of Node.js.
+
+- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
+- Use `bun install` instead of `npm install`
+- Use `bun run <script>` instead of `npm run <script>`
+- Use `bunx <package>` instead of `npx <package>`
+- Bun automatically loads .env, so don't use dotenv.
+
+## Project Structure
+
+```
+src/
+  client/                    React frontend
+    index.tsx                React entry point + App + routing
+    Layout.tsx               App shell with collapsible/resizable sidebar
+    Layout/Sidebar.tsx       Page tree, real-time updates, drag-and-drop
+    Page.tsx                 Page feature (title, editor, collaboration)
+    Page/Editor.tsx          Tiptap editor with floating toolbar
+    common/CableClient.ts    ActionCable-inspired WebSocket client
+    common/fetch.ts          Auth-ready fetch wrapper (auto-JSON, ApiError)
+  server/                    Bun.serve backend
+    index.ts                 Server entry (routes + WebSocket upgrade)
+    Cable.ts                 WebSocket hub (subscribe, broadcast, relay)
+    Cable/DocumentManager.ts In-memory Yjs docs + DB persistence
+    Pages.ts                 REST API route handlers (CRUD + tree ops)
+    Pages/Page.ts            Page model (baked-orm, soft delete)
+  shared/                    Code shared between client and server
+    slugify.ts               URL slug generation
+    ancestry.ts              Cycle-safe parent walk for tree validation
+db/
+  migrations/                baked-orm migrations (raw SQL in TypeScript)
+  schema.ts                  Auto-generated from DB (do not edit)
+tests/                       Unit tests (mirrors src/ structure)
+e2e/                         Playwright E2E tests
+scripts/
+  move.ts                    Move files with automatic import updates
+  db-cleanup.ts              Drop orphaned per-worktree databases
+```
+
+## Key Conventions
+
+- **File naming**: PascalCase for components/classes, lowercase for utilities.
+- **Feature structure**: `Feature.tsx` sits alongside `Feature/` which holds its internals. No `index.ts` files.
+- **Path aliases**: `@client/*`, `@server/*`, `@shared/*`, `@db/*` (defined in tsconfig.json).
+- **Moving files**: Use `bun scripts/move.ts <source> <dest>` to move files. It updates all imports automatically.
+- **Inline types**: Don't create named `interface`/`type` declarations for single-use props or shapes.
+
+## Database
+
+PostgreSQL 18. ORM is [baked-orm](https://www.npmjs.com/package/baked-orm).
+
+```bash
+bun bake db create <name>        # Create database
+bun bake db generate <name>      # Generate migration
+bun bake db migrate up           # Run pending migrations
+bun bake db migrate down         # Rollback last migration
+```
+
+Schema is auto-generated at `db/schema.ts` after each migration. Don't edit it manually.
+
+## Server
+
+`Bun.serve()` with routes + WebSocket. Don't use express.
+
+- REST routes defined in `src/server/Pages.ts`.
+- WebSocket upgrade at `/ws`, managed by `Cable` class.
+- `DELETE` is a hard delete in development and a soft delete (`discarded_at`) in production.
+
+## Real-time Collaboration
+
+- **Single Y.Doc per page** — all blocks live in one Yjs document, stored as `yjs_state bytea` on the `pages` table.
+- **Yjs** for CRDT-based editing (synced via `doc:page_{id}` WebSocket channel).
+- **Custom Yjs provider** bridges Yjs sync protocol to the CableClient.
+- **Undo/redo** uses Yjs UndoManager via Tiptap's Collaboration extension.
+
+## Testing
+
+```bash
+bun test              # Bun unit tests (tests/)
+bun run test:e2e      # Playwright E2E tests (e2e/)
+bun run check         # Biome lint + knip dead code + tsc type check
+```
+
+## CI
+
+GitHub Actions runs on push to `main` and on pull requests (`.github/workflows/ci.yml`). Three jobs: `check` (lint + types + dead code), `unit-tests` (against Postgres 18), and `e2e-tests` (Playwright, gated on `dorny/paths-filter`).
+
+## Browser Debugging
+
+Chrome DevTools MCP is available for browser inspection. Use it instead of Playwright for debugging and profiling tasks — it connects to the user's actual browser tab via CDP.
+
+Requires Chrome running with `--remote-debugging-port=9222`. Reserve Playwright for E2E test authoring, not ad-hoc debugging.

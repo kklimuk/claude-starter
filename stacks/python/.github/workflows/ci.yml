@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.head_ref || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint + Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    # IF_POSTGRES
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: "{{db_prefix}}_test"
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    # END_POSTGRES
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run pytest
+        # IF_POSTGRES
+        env:
+          DATABASE_URL: "postgres://postgres:postgres@localhost:5432/{{db_prefix}}_test"
+        # END_POSTGRES

@@ -1,0 +1,54 @@
+# newsbot
+
+A Python pipeline that scrapes RSS feeds, classifies articles with an LLM, and generates a daily editorial brief. Pipeline: fetch → parse → classify → cluster → brief.
+
+Use uv for everything: `uv run`, `uv add`, `uv sync`. Don't use pip or venv directly.
+
+## Project Structure
+
+```
+src/newsbot/
+  __init__.py
+  cli.py                       Typer CLI entry: fetch, classify, brief
+  fetch.py                     RSS fetcher with retries + dedup
+  parse.py                     Readability + BeautifulSoup article extraction
+  classify.py                  Async OpenAI calls, Pydantic schemas for results
+  cluster.py                   Embedding + HDBSCAN clustering of articles
+  brief.py                     Brief generation orchestrator
+  brief/
+    topics.py                  Topic synthesis (one yield per cluster)
+    facts.py                   Fact extraction per cluster
+    write.py                   Final brief markdown writer
+  models.py                    Pydantic models shared across modules
+  storage.py                   Local JSON / SQLite persistence
+tests/                         pytest unit tests (mirrors src/newsbot)
+data/                          Per-day output (YYYY-MM-DD/...)
+```
+
+## Key Conventions
+
+- **Async by default**: All I/O paths (HTTP, OpenAI, DB) use `httpx.AsyncClient` and `asyncio.gather`. Use `anyio.run` over the bare `asyncio.run` for cancellation safety.
+- **Pydantic for everything crossing a boundary**: HTTP responses, LLM outputs, JSON files. Don't pass dicts.
+- **Pipeline modules yield**: `cluster.py`, `classify.py`, etc. expose `async def run(...) -> AsyncIterator[Result]` so the orchestrator (CLI) handles I/O and progress.
+- **Type hints everywhere**: ruff has `select = ["..."]` set strict; new code without hints fails CI.
+
+## LLM Calls
+
+Uses the `openai` SDK. Models pinned in `src/newsbot/config.py`. Always validate the parsed response against a Pydantic schema before passing it downstream — the model will hallucinate fields if you don't.
+
+## Testing
+
+```bash
+uv run pytest                  # All tests
+uv run pytest tests/test_fetch.py  # One file
+uv run ruff check .            # Lint
+uv run ruff format --check .   # Format check
+```
+
+## Pre-commit
+
+Runs ruff (lint + format) and pytest on every commit. Configured in `.pre-commit-config.yaml`. Install with `uvx pre-commit install` after cloning.
+
+## CI
+
+GitHub Actions runs on push to `main` and on pull requests (`.github/workflows/ci.yml`). Two jobs: `check` (ruff lint + format) and `unit-tests` (pytest).

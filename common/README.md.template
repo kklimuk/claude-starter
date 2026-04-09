@@ -1,0 +1,58 @@
+# {{project_name}}
+
+{{description}}
+
+<!--
+  ─── How to fill in this file ───
+  Read claude-starter/docs/writing-readme.md before editing. The short version:
+  - One paragraph elevator pitch above
+  - Stack list
+  - Getting Started: prerequisites, setup, dev loop
+  - Commands table
+  - Architecture (trimmed source tree)
+  - How It Works (prose paragraphs explaining the interesting parts)
+  - Aim for 50–150 lines.
+-->
+
+## Stack
+
+- **Runtime**: ...
+- **Database**: ...
+- **Quality**: ...
+
+## Getting Started
+
+### Prerequisites
+
+- ...
+
+### Setup
+
+```bash
+{{install_command}}
+```
+
+### Development
+
+```bash
+{{dev_command}}
+```
+
+### Commands
+
+| Command | Description |
+|---|---|
+| `{{dev_command}}` | Start dev server |
+| `{{test_command}}` | Run tests |
+| `{{check_command}}` | Lint + types + dead code |
+
+## Architecture
+
+```
+src/
+  ...
+```
+
+## How It Works
+
+<!-- 3–6 prose paragraphs explaining the data model, the unusual choices, the trick that makes it work -->

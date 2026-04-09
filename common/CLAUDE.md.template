@@ -1,0 +1,55 @@
+# {{project_name}}
+
+{{description}}
+
+<!--
+  ─── How to fill in this file ───
+  Read claude-starter/docs/writing-claude-md.md before editing. The short version:
+  - Lead with stack/runtime overrides if any (e.g. "Default to Bun, not Node").
+  - Annotated source tree below — one line per file/folder, narrow column.
+  - Key conventions section: 3–7 non-obvious rules.
+  - Per-subsystem sections only when nontrivial.
+  - Testing + CI sections last.
+  - Aim for 100–400 lines total.
+-->
+
+{{stack_overrides}}
+
+## Project Structure
+
+```
+src/
+  ...                          <!-- one line per file/folder, narrow column -->
+```
+
+## Key Conventions
+
+- **File naming**: ...
+- **Feature structure**: ...
+- **Path aliases**: ...
+
+<!-- Per-subsystem sections only when nontrivial. Delete these headers if you don't need them. -->
+
+## Database
+
+<!-- ORM, migration system, schema generation, conventions for adding tables -->
+
+## Server
+
+<!-- Routing, middleware, request/response shape -->
+
+## Frontend
+
+<!-- State management, key libs, conventions for components -->
+
+## Testing
+
+```bash
+{{test_command}}
+{{check_command}}
+```
+
+## CI
+
+GitHub Actions runs on push to `main` and on pull requests (`.github/workflows/ci.yml`).
+See [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for the job list.

@@ -1,0 +1,138 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.head_ref || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  # IF_E2E
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      e2e: ${{ steps.filter.outputs.e2e }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            e2e:
+              - 'src/**'
+              - 'e2e/**'
+              - 'playwright.config.ts'
+              - 'package.json'
+              - 'bun.lock'
+              - 'tsconfig.json'
+              - '.github/workflows/ci.yml'
+  # END_E2E
+
+  check:
+    name: Lint + Types + Dead Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    # IF_POSTGRES
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: "{{db_prefix}}_test"
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    # END_POSTGRES
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+      - run: bun install --frozen-lockfile
+      - run: bun test
+        # IF_POSTGRES
+        env:
+          DATABASE_URL: "postgres://postgres:postgres@localhost:5432/{{db_prefix}}_test"
+        # END_POSTGRES
+
+  # IF_E2E
+  e2e-tests:
+    name: E2E Tests
+    needs: changes
+    runs-on: ubuntu-latest
+    # IF_POSTGRES
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: "{{db_prefix}}_test"
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    # END_POSTGRES
+    env:
+      RUN_E2E: ${{ needs.changes.outputs.e2e }}
+    steps:
+      - run: echo "Skipping E2E — no relevant files changed"
+        if: env.RUN_E2E != 'true'
+      - uses: actions/checkout@v4
+        if: env.RUN_E2E == 'true'
+      - uses: oven-sh/setup-bun@v2
+        if: env.RUN_E2E == 'true'
+      - uses: actions/cache@v4
+        if: env.RUN_E2E == 'true'
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+      - run: bun install --frozen-lockfile
+        if: env.RUN_E2E == 'true'
+      - uses: actions/cache@v4
+        id: playwright-cache
+        if: env.RUN_E2E == 'true'
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+      - run: bunx playwright install chromium --with-deps
+        if: env.RUN_E2E == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
+      - run: bunx playwright install-deps chromium
+        if: env.RUN_E2E == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
+      - run: bun run test:e2e
+        if: env.RUN_E2E == 'true'
+        # IF_POSTGRES
+        env:
+          DATABASE_URL: "postgres://postgres:postgres@localhost:5432/{{db_prefix}}_test"
+        # END_POSTGRES
+  # END_E2E

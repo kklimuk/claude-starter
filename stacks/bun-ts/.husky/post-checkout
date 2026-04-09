@@ -1,0 +1,32 @@
+#!/bin/sh
+# Initialize husky hooks in this worktree if not already present.
+# Without this, core.hooksPath points to .husky/_/ which doesn't exist in worktrees.
+if [ ! -d .husky/_ ]; then
+  bunx husky 2>/dev/null || true
+fi
+
+# Symlink shared env files from the git directory into each worktree.
+# Runs on checkout and worktree creation; no-op if already present.
+common_dir="$(git rev-parse --git-common-dir)"
+for env_file in .env .env.development.local; do
+  if [ ! -e "$env_file" ] && [ -f "$common_dir/$env_file" ]; then
+    ln -s "$common_dir/$env_file" "$env_file"
+  fi
+done
+
+# IF_POSTGRES
+# Per-worktree overrides: random port + dedicated database.
+# Written to .env.local which Bun loads after .env.development.
+if [ ! -e .env.local ]; then
+  port=$(( (RANDOM % 4001) + 3000 ))
+  # Derive DB name from worktree directory (main repo uses {{db_prefix}}_dev)
+  wt_name=$(basename "$(pwd)")
+  db_name="{{db_prefix}}_$(echo "$wt_name" | tr '-' '_')"
+  DATABASE_URL="postgres://localhost:5432/$db_name" bun bake db create 2>/dev/null || true
+  DATABASE_URL="postgres://localhost:5432/$db_name" bun bake db migrate up 2>/dev/null || true
+  cat > .env.local <<EOL
+PORT=$port
+DATABASE_URL=postgres://localhost:5432/$db_name
+EOL
+fi
+# END_POSTGRES
