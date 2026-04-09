@@ -6,6 +6,10 @@
 # Usage:
 #   path\to\claude-starter\init.ps1 <target-directory>
 #
+# Or run it directly from GitHub (no clone needed):
+#   iwr -useb https://raw.githubusercontent.com/kklimuk/claude-starter/main/init.ps1 -OutFile $env:TEMP\claude-starter-init.ps1
+#   & $env:TEMP\claude-starter-init.ps1 <target-directory>
+#
 # Examples:
 #   C:\workspace\claude-starter\init.ps1 C:\workspace\my-new-project
 #   cd C:\workspace\my-existing-project; C:\workspace\claude-starter\init.ps1 .
@@ -20,9 +24,36 @@ param(
 $ErrorActionPreference = "Stop"
 
 # ─── Locate the template root (the dir this script lives in) ───
-$TemplateRoot = Split-Path -Parent $PSCommandPath
-if (-not $TemplateRoot) {
-    $TemplateRoot = (Get-Location).Path
+$TemplateRoot = ""
+if ($PSCommandPath) {
+    $TemplateRoot = Split-Path -Parent $PSCommandPath
+}
+
+# ─── Bootstrap from GitHub if running standalone ───
+# If `common\` isn't sitting next to the script, we're running detached
+# (e.g. saved to %TEMP% via iwr). Download the zipball into a temp dir.
+$Bootstrapped = $false
+if (-not $TemplateRoot -or -not (Test-Path (Join-Path $TemplateRoot "common"))) {
+    Write-Host "→ Fetching claude-starter template from GitHub..."
+    $Bootstrapped = $true
+    $bootstrapDir = Join-Path ([System.IO.Path]::GetTempPath()) ("claude-starter-" + [System.Guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $bootstrapDir -Force | Out-Null
+    $zipPath = Join-Path $bootstrapDir "template.zip"
+    try {
+        Invoke-WebRequest -UseBasicParsing `
+            -Uri "https://codeload.github.com/kklimuk/claude-starter/zip/refs/heads/main" `
+            -OutFile $zipPath
+        Expand-Archive -Path $zipPath -DestinationPath $bootstrapDir -Force
+        Remove-Item $zipPath -Force
+    } catch {
+        Write-Error "Failed to fetch template: $_"
+        exit 1
+    }
+    $TemplateRoot = Join-Path $bootstrapDir "claude-starter-main"
+    if (-not (Test-Path (Join-Path $TemplateRoot "common"))) {
+        Write-Error "Bootstrap failed: $TemplateRoot\common not found after extract."
+        exit 1
+    }
 }
 
 # ─── Resolve target directory ───
@@ -344,5 +375,9 @@ if ($UsePostgres -eq "y") {
     Write-Host ""
 }
 Write-Host "  # Read the docs for any of the pieces you want to customize:"
-Write-Host "  #   $TemplateRoot\docs\"
+if ($Bootstrapped) {
+    Write-Host "  #   https://github.com/kklimuk/claude-starter/tree/main/docs"
+} else {
+    Write-Host "  #   $TemplateRoot\docs\"
+}
 Write-Host ""

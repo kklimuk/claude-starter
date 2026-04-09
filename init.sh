@@ -6,6 +6,9 @@
 # Usage:
 #   path/to/claude-starter/init.sh <target-directory>
 #
+# Or run it directly from GitHub (no clone needed):
+#   curl -fsSL https://raw.githubusercontent.com/kklimuk/claude-starter/main/init.sh | sh -s -- <target-directory>
+#
 # Examples:
 #   ~/workspace/claude-starter/init.sh ~/workspace/my-new-project
 #   cd ~/workspace/my-existing-project && ~/workspace/claude-starter/init.sh .
@@ -13,6 +16,15 @@
 # POSIX sh, no bashisms. Tested under bash, dash, and busybox sh.
 
 set -eu
+
+# ─── Allow interactive prompts when piped from curl ───
+# When invoked via `curl ... | sh`, stdin is the pipe — `read` would never see
+# the user. Reattach stdin to the controlling terminal if one is actually
+# usable (the file existing isn't enough; sandboxed shells have /dev/tty but
+# can't open it).
+if [ ! -t 0 ] && (: </dev/tty) 2>/dev/null; then
+  exec </dev/tty
+fi
 
 # ─── Locate the template root (the dir this script lives in) ───
 SCRIPT_PATH="$0"
@@ -24,7 +36,32 @@ while [ -L "$SCRIPT_PATH" ]; do
     *)  SCRIPT_PATH="$(dirname "$SCRIPT_PATH")/$link_target" ;;
   esac
 done
-TEMPLATE_ROOT="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+TEMPLATE_ROOT="$(cd "$(dirname "$SCRIPT_PATH")" 2>/dev/null && pwd || echo "")"
+
+# ─── Bootstrap from GitHub if running standalone ───
+# If `common/` isn't sitting next to the script, we're running detached
+# (e.g. piped from curl). Download the tarball into a temp dir and use that.
+BOOTSTRAPPED=0
+if [ -z "$TEMPLATE_ROOT" ] || [ ! -d "$TEMPLATE_ROOT/common" ]; then
+  echo "→ Fetching claude-starter template from GitHub..."
+  BOOTSTRAPPED=1
+  BOOTSTRAP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t claude-starter)"
+  trap 'rm -rf "$BOOTSTRAP_DIR"' EXIT INT TERM
+  TARBALL_URL="https://codeload.github.com/kklimuk/claude-starter/tar.gz/refs/heads/main"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$TARBALL_URL" | tar -xz -C "$BOOTSTRAP_DIR"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO- "$TARBALL_URL" | tar -xz -C "$BOOTSTRAP_DIR"
+  else
+    echo "Need curl or wget to bootstrap the template." >&2
+    exit 1
+  fi
+  TEMPLATE_ROOT="$BOOTSTRAP_DIR/claude-starter-main"
+  if [ ! -d "$TEMPLATE_ROOT/common" ]; then
+    echo "Bootstrap failed: $TEMPLATE_ROOT/common not found after extract." >&2
+    exit 1
+  fi
+fi
 
 # ─── Parse arguments ───
 if [ $# -lt 1 ]; then
@@ -388,5 +425,9 @@ if [ "$USE_POSTGRES" = "y" ]; then
   echo ""
 fi
 echo "  # Read the docs for any of the pieces you want to customize:"
-echo "  #   $TEMPLATE_ROOT/docs/"
+if [ "$BOOTSTRAPPED" = "1" ]; then
+  echo "  #   https://github.com/kklimuk/claude-starter/tree/main/docs"
+else
+  echo "  #   $TEMPLATE_ROOT/docs/"
+fi
 echo ""

@@ -22,33 +22,35 @@ Run `init.sh` (or `init.ps1` on Windows) inside a target directory and you'll en
 
 ## How to run it
 
-Clone this repo somewhere stable:
-
-```sh
-git clone https://github.com/<you>/claude-starter.git ~/workspace/claude-starter
-```
+No clone required — the init scripts self-bootstrap. They detect when they're running detached, fetch the template tarball from GitHub into a temp dir, run the scaffold, then clean up.
 
 ### macOS / Linux / WSL
 
 ```sh
 # Bootstrap a brand-new project folder
-~/workspace/claude-starter/init.sh ~/workspace/my-new-project
+curl -fsSL https://raw.githubusercontent.com/kklimuk/claude-starter/main/init.sh | sh -s -- ~/workspace/my-new-project
 
 # Or layer onto an existing project
 cd ~/workspace/my-existing-project
-~/workspace/claude-starter/init.sh .
+curl -fsSL https://raw.githubusercontent.com/kklimuk/claude-starter/main/init.sh | sh -s -- .
 ```
 
 ### Windows (PowerShell)
 
+PowerShell can't pipe a script and pass arguments in one shot, so save it first:
+
 ```powershell
 # Bootstrap a brand-new project folder
-C:\workspace\claude-starter\init.ps1 C:\workspace\my-new-project
+iwr -useb https://raw.githubusercontent.com/kklimuk/claude-starter/main/init.ps1 -OutFile $env:TEMP\claude-starter-init.ps1
+& $env:TEMP\claude-starter-init.ps1 C:\workspace\my-new-project
 
 # Or layer onto an existing project
 cd C:\workspace\my-existing-project
-C:\workspace\claude-starter\init.ps1 .
+iwr -useb https://raw.githubusercontent.com/kklimuk/claude-starter/main/init.ps1 -OutFile $env:TEMP\claude-starter-init.ps1
+& $env:TEMP\claude-starter-init.ps1 .
 ```
+
+> Each run pulls fresh from `main`, so you always get the latest template. If you'd rather keep a permanent checkout (e.g. to hack on the template itself), clone the repo and call `init.sh` / `init.ps1` from there directly — the scripts skip the bootstrap when they find `common/` next to themselves.
 
 The script will prompt for:
 
