@@ -76,7 +76,7 @@ claude plugin install pyright-lsp@claude-plugins-official
 
 # Chrome DevTools (plugin + MCP — both are needed)
 claude plugin marketplace add ChromeDevTools/chrome-devtools-mcp
-claude plugin install chrome-devtools-mcp@chrome-devtools-mcp
+claude plugin install chrome-devtools-mcp
 claude mcp add --scope project chrome-devtools -- npx -y chrome-devtools-mcp@latest
 ```
 

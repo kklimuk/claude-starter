@@ -345,7 +345,7 @@ if ($UseLsp -eq "y") {
 
 if ($UseChrome -eq "y") {
     RunOrPrint @("plugin", "marketplace", "add", "ChromeDevTools/chrome-devtools-mcp")
-    RunOrPrint @("plugin", "install", "chrome-devtools-mcp@chrome-devtools-mcp")
+    RunOrPrint @("plugin", "install", "chrome-devtools-mcp")
     RunOrPrint @("mcp", "add", "--scope", "project", "chrome-devtools", "--", "npx", "-y", "chrome-devtools-mcp@latest")
 }
 

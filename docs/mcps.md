@@ -6,11 +6,11 @@ MCP (Model Context Protocol) servers expose tools and resources to Claude Code o
 
 MCP server configuration lives in one of three places, depending on scope:
 
-| Scope | File | Shared via |
-|---|---|---|
+| Scope           | File                                   | Shared via |
+| --------------- | -------------------------------------- | ---------- |
 | Local (default) | `~/.claude.json` (per-project section) | Not shared |
-| Project | `.mcp.json` at the project root | Git |
-| User | `~/.claude.json` | Not shared |
+| Project         | `.mcp.json` at the project root        | Git        |
+| User            | `~/.claude.json`                       | Not shared |
 
 For team consistency, **prefer project scope** so the MCP setup is committed to the repo and every contributor gets the same servers.
 
@@ -89,13 +89,13 @@ chrome.exe --remote-debugging-port=9222
 
 ### Common uses
 
-| Tool | When |
-|---|---|
-| `list_console_messages` | "Why does the page show an error?" |
-| `evaluate_script` | "What's the value of this variable in the page right now?" |
-| `take_screenshot` | "Show me what this looks like" |
-| `navigate_page` | "Reload after my fix" |
-| `performance_start_trace` + `performance_analyze_insight` | "Why is this slow?" |
+| Tool                                                      | When                                                       |
+| --------------------------------------------------------- | ---------------------------------------------------------- |
+| `list_console_messages`                                   | "Why does the page show an error?"                         |
+| `evaluate_script`                                         | "What's the value of this variable in the page right now?" |
+| `take_screenshot`                                         | "Show me what this looks like"                             |
+| `navigate_page`                                           | "Reload after my fix"                                      |
+| `performance_start_trace` + `performance_analyze_insight` | "Why is this slow?"                                        |
 
 For ad-hoc browser debugging, prefer Chrome DevTools MCP over Playwright. Playwright is for **writing E2E tests**, not for poking at the live app.
 
@@ -105,7 +105,7 @@ Chrome DevTools is unusual in that it's available **both** as a plugin (which sh
 
 ```sh
 claude plugin marketplace add ChromeDevTools/chrome-devtools-mcp
-claude plugin install chrome-devtools-mcp@chrome-devtools-mcp
+claude plugin install chrome-devtools-mcp
 claude mcp add --scope project chrome-devtools -- npx -y chrome-devtools-mcp@latest
 ```
 

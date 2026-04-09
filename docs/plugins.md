@@ -50,7 +50,7 @@ The format is `owner/repo` for GitHub, or a full git URL for anything else. Afte
 
 ```sh
 claude plugin marketplace add ChromeDevTools/chrome-devtools-mcp
-claude plugin install chrome-devtools-mcp@chrome-devtools-mcp
+claude plugin install chrome-devtools-mcp
 ```
 
 The first command registers the marketplace; the second installs the plugin from it. This is the recommended path for Chrome DevTools — see below for why both the plugin and the MCP server matter.
@@ -59,9 +59,9 @@ The first command registers the marketplace; the second installs the plugin from
 
 For some integrations (Chrome DevTools is the canonical example), you install **both** a plugin and an MCP server:
 
-| Layer | What it provides |
-|---|---|
-| **Plugin** | Slash commands (`/debug-optimize-lcp`, `/a11y-debugging`), pre-canned workflows, settings |
+| Layer          | What it provides                                                                                      |
+| -------------- | ----------------------------------------------------------------------------------------------------- |
+| **Plugin**     | Slash commands (`/debug-optimize-lcp`, `/a11y-debugging`), pre-canned workflows, settings             |
 | **MCP server** | The actual tool surface (`mcp__chrome-devtools__list_pages`, etc.) — what the AI calls under the hood |
 
 The plugin's slash commands invoke the MCP server's tools. You need the MCP server installed for the plugin's commands to work, and you need the plugin installed for the slash commands to exist.
@@ -76,16 +76,16 @@ claude mcp add --scope project chrome-devtools -- npx -y chrome-devtools-mcp@lat
 
 ## What's a plugin vs what's an MCP
 
-| Integration | Available as |
-|---|---|
-| TypeScript LSP | Plugin (`typescript-lsp@claude-plugins-official`) |
-| Pyright LSP | Plugin (`pyright-lsp@claude-plugins-official`) |
-| GitHub | Plugin (`@claude-plugins-official`) |
-| GitLab | Plugin (`@claude-plugins-official`) |
-| Jira / Slack / Vercel | Plugins (`@claude-plugins-official`) |
-| Chrome DevTools | **Plugin + MCP** (`ChromeDevTools/chrome-devtools-mcp` marketplace, plus separate MCP install) |
-| Postgres / Filesystem / Git | MCP servers (no plugin wrapper) |
-| Linear, Notion (claude.ai versions) | Built-in MCPs configured at the user level |
+| Integration                         | Available as                                                                                   |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------- |
+| TypeScript LSP                      | Plugin (`typescript-lsp@claude-plugins-official`)                                              |
+| Pyright LSP                         | Plugin (`pyright-lsp@claude-plugins-official`)                                                 |
+| GitHub                              | Plugin (`@claude-plugins-official`)                                                            |
+| GitLab                              | Plugin (`@claude-plugins-official`)                                                            |
+| Jira / Slack / Vercel               | Plugins (`@claude-plugins-official`)                                                           |
+| Chrome DevTools                     | **Plugin + MCP** (`ChromeDevTools/chrome-devtools-mcp` marketplace, plus separate MCP install) |
+| Postgres / Filesystem / Git         | MCP servers (no plugin wrapper)                                                                |
+| Linear, Notion (claude.ai versions) | Built-in MCPs configured at the user level                                                     |
 
 When in doubt: if it shows up in `/plugin marketplace browse`, install it as a plugin. If it's a raw MCP server reference somewhere, use `claude mcp add`. Some things — like Chrome DevTools — are both.
 

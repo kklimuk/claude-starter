@@ -382,7 +382,7 @@ fi
 
 if [ "$USE_CHROME" = "y" ]; then
   run_or_print claude plugin marketplace add ChromeDevTools/chrome-devtools-mcp
-  run_or_print claude plugin install chrome-devtools-mcp@chrome-devtools-mcp
+  run_or_print claude plugin install chrome-devtools-mcp
   run_or_print claude mcp add --scope project chrome-devtools -- npx -y chrome-devtools-mcp@latest
   # Add allow-list entries to settings.json (non-destructive)
   SETTINGS_FILE="$TARGET/.claude/settings.json"
