@@ -1,11 +1,16 @@
 ---
 name: security-review
 description: "Review code for security vulnerabilities. Use when the user says 'security review', 'security audit', 'check for vulnerabilities', 'pentest the code', 'OWASP check', or any variation of wanting a security assessment."
+context: fork
+agent: general-purpose
+allowed-tools: Read Grep Glob Bash(git diff:*) Bash(git log:*) Bash(git status:*) Bash(git show:*) WebFetch
 ---
 
 # Security Review
 
 Audit changed files for security vulnerabilities, focusing on the OWASP Top 10 and issues specific to the project's stack.
+
+When running locally as a forked subagent, the main session does not see any files you read or any reasoning you do — only the final report you return. When running in CI (e.g. via `claude-code-action`), the workflow takes the report and turns it into GitHub PR review comments. Either way, take your time, read every changed file completely, and produce a thorough, actionable report. The consumer of this report uses it as a worklist, so it must be complete and self-contained.
 
 ## Scope
 
@@ -66,6 +71,8 @@ Read every changed file completely before starting the review. Read CLAUDE.md fi
 
 ## Report Format
 
+Return the **complete formatted report** as your final message — not a summary or TL;DR. Whatever consumes the report (a main Claude session locally, or a CI workflow that posts inline GitHub PR comments) uses it as a worklist, so it must be self-contained.
+
 Organize findings by severity:
 
 ### Critical
@@ -80,12 +87,15 @@ Defense-in-depth issues. Missing validation that's currently protected by anothe
 ### Low
 Hardening recommendations. Not exploitable today but reduce attack surface.
 
-For each finding:
-1. **File and line number** — exact location
-2. **Vulnerability type** — OWASP category or CWE
-3. **Description** — what's wrong and why it matters
-4. **Exploit scenario** — how an attacker would use this
-5. **Fix** — specific code change to remediate
+For each finding, include enough detail that the consumer can apply the fix without re-reading the entire file:
+
+1. **File and line** — exact `path:line` (or `path:start-end` for ranges); list every site for cross-file findings
+2. **Severity** — Critical / High / Medium / Low
+3. **Vulnerability type** — OWASP category or CWE
+4. **Current code** — short snippet of the vulnerable code (not just a description)
+5. **Exploit scenario** — concrete steps showing how an attacker would use this
+6. **Fix** — specific code change, ideally as a before/after snippet
+7. **Surrounding context** — callers, related files that must change in lockstep, validation layers the fix depends on, tests that should be added
 
 ## What NOT to Do
 
@@ -96,4 +106,4 @@ For each finding:
 
 ## After the Report
 
-When the user asks to fix findings, work through them in severity order. Each fix should be minimal and targeted — don't refactor surrounding code. Run the project's check command (`{{check_command}}`) and tests after fixes.
+The fix phase (or PR-comment-posting phase) happens in whatever consumes this report — not here. Your job ends when you return the report. Make sure it has enough information for that consumer to act on findings without re-reading the codebase. Locally, the main session will work through findings in severity order with minimal, targeted fixes and run `{{check_command}}` + `{{test_command}}` after each. In CI, the workflow will turn each finding into a GitHub PR review comment.

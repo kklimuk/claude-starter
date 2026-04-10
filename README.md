@@ -4,27 +4,32 @@ A copy-from template for bootstrapping Claude Code projects with a consistent se
 
 It is opinionated. The conventions baked in here come from running Claude Code on three real projects and converging on what worked.
 
-## What you get
+## Getting started
 
-Run `init.sh` (or `init.ps1` on Windows) inside a target directory and you'll end up with:
+### 1. Read how this template thinks
 
-- **`CLAUDE.md`** — annotated skeleton with the section structure that holds up across projects
-- **`README.md`** — human-facing skeleton (CLAUDE.md is for the AI; README is for humans)
-- **`.claude/settings.json`** — permissions baseline with sensible `gh` / `git` / web allowlists and a force-push deny list
-- **`.claude/skills/`** — `code-review`, `codebase-review`, `security-review`, and `commit` skills, ready to trigger
-- **`.github/workflows/ci.yml`** — lint + types + tests, with optional Postgres and E2E gating via `dorny/paths-filter`
-- **`.github/workflows/review.yml`** — Claude as a PR reviewer (`anthropics/claude-code-action@v1`), posting one consolidated review with inline comments
-- **`.github/PULL_REQUEST_TEMPLATE.md`** and **`REVIEW_EXCEPTIONS.md`** — the surrounding workflow scaffolding
-- **Stack-specific tooling**:
-  - **bun-ts**: `package.json`, `biome.json`, `knip.json`, `tsconfig.json`, husky hooks (pre-commit + post-checkout), reusable utility scripts (`move.ts`, `db-cleanup.ts`)
-  - **python**: `pyproject.toml`, `ruff.toml`, `.pre-commit-config.yaml`
-- **Plugin + MCP installs** (via `claude` CLI): TypeScript LSP / Pyright LSP, plus optional Chrome DevTools (plugin + MCP server)
+The scaffolder is the *output*. The *reasoning* lives in [`docs/`](docs/). If you skip the docs, you'll have a working project without knowing why the hooks are split the way they are, why the permissions baseline draws the lines it does, or why there are two GitHub workflows instead of one — and every time you want to bend the template to fit your project, you'll be guessing.
 
-## How to run it
+**Read these before you run the scaffolder.** They're short, written as standalone essays, and the interesting thinking lives in them — not in this README:
+
+- [`docs/writing-claude-md.md`](docs/writing-claude-md.md) — how to structure a CLAUDE.md so the AI loads the right context. The single highest-leverage file in any Claude Code project.
+- [`docs/writing-readme.md`](docs/writing-readme.md) — why README is for humans and CLAUDE.md is for the AI, and what that means in practice.
+- [`docs/writing-skills.md`](docs/writing-skills.md) — frontmatter, trigger phrases, and when a workflow should be a skill vs. a line in CLAUDE.md.
+- [`docs/permissions.md`](docs/permissions.md) — the allow-prefix pattern, why there are two settings files, and what belongs in each.
+- [`docs/hooks.md`](docs/hooks.md) — pre-commit and post-checkout philosophy, husky vs. the `pre-commit` framework, and the two pre-commit variants.
+- [`docs/worktrees.md`](docs/worktrees.md) — why git worktrees are the highest-leverage workflow trick for Claude Code, and how the template sets up per-worktree DBs and env files automatically.
+- [`docs/github-actions.md`](docs/github-actions.md) — the two-workflow pattern (CI + Claude reviewer) and why they're separate.
+- [`docs/mcps.md`](docs/mcps.md) — what MCP servers are, how to register them, and the security model.
+- [`docs/plugins.md`](docs/plugins.md) — marketplaces, LSP plugins, and third-party plugins like Chrome DevTools.
+
+Each doc stands on its own — read the ones relevant to what you're setting up and come back for the rest when you need them. But don't skip them all.
+
+### 2. Run the scaffolder
 
 No clone required — the init scripts self-bootstrap. They detect when they're running detached, fetch the template tarball from GitHub into a temp dir, run the scaffold, then clean up.
 
-### macOS / Linux / WSL
+<details open>
+<summary><b>macOS / Linux / WSL</b></summary>
 
 ```sh
 # Bootstrap a brand-new project folder
@@ -37,7 +42,10 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/kklimuk/claude-starter/mai
 
 > Use the `sh -c "$(curl ...)"` form, **not** `curl ... | sh`. The piped form hangs on the first prompt because stdin is the pipe carrying the script.
 
-### Windows (PowerShell)
+</details>
+
+<details>
+<summary><b>Windows (PowerShell)</b></summary>
 
 PowerShell can't pipe a script and pass arguments in one shot, so save it first:
 
@@ -52,9 +60,13 @@ iwr -useb https://raw.githubusercontent.com/kklimuk/claude-starter/main/init.ps1
 & $env:TEMP\claude-starter-init.ps1 .
 ```
 
+</details>
+
 > Each run pulls fresh from `main`, so you always get the latest template. If you'd rather keep a permanent checkout (e.g. to hack on the template itself), clone the repo and call `init.sh` / `init.ps1` from there directly — the scripts skip the bootstrap when they find `common/` next to themselves.
 
-The script will prompt for:
+### 3. Answer the prompts
+
+The script will ask for:
 
 1. Project name (default: basename of target directory)
 2. One-line description
@@ -65,22 +77,9 @@ The script will prompt for:
 7. Install Chrome DevTools? (default `n`)
 8. Install language-server plugin? (default `y`)
 
-### What happens when you say yes to plugins / MCPs
+If `claude` is on your `PATH`, the script runs the plugin/MCP install commands directly. If not, it prints them so you can run them by hand later.
 
-If `claude` is on your `PATH`, the script runs the install commands directly. If not, it prints them so you can run them by hand later.
-
-```sh
-# LSP plugin (one of these depending on stack)
-claude plugin install typescript-lsp@claude-plugins-official
-claude plugin install pyright-lsp@claude-plugins-official
-
-# Chrome DevTools (plugin + MCP — both are needed)
-claude plugin marketplace add ChromeDevTools/chrome-devtools-mcp
-claude plugin install chrome-devtools-mcp
-claude mcp add --scope project chrome-devtools -- npx -y chrome-devtools-mcp@latest
-```
-
-### After init.sh finishes
+### 4. Finish the setup
 
 Set up secrets if you opted into the PR reviewer or Postgres:
 
@@ -99,9 +98,25 @@ bun install && bun run prepare
 uv sync && uvx pre-commit install
 ```
 
-Then open `CLAUDE.md` and fill in the placeholder sections.
+Then open `CLAUDE.md` and fill in the placeholder sections. You're running.
 
-## Layout of this repo
+## What you get
+
+The scaffolder drops the following into your target directory:
+
+- **`CLAUDE.md`** — annotated skeleton with the section structure that holds up across projects
+- **`README.md`** — human-facing skeleton (CLAUDE.md is for the AI; README is for humans)
+- **`.claude/settings.json`** — permissions baseline with sensible `gh` / `git` / web allowlists and a force-push deny list
+- **`.claude/skills/`** — `code-review`, `codebase-review`, `security-review`, and `commit` skills, ready to trigger
+- **`.github/workflows/ci.yml`** — lint + types + tests, with optional Postgres and E2E gating via `dorny/paths-filter`
+- **`.github/workflows/review.yml`** — Claude as a PR reviewer (`anthropics/claude-code-action@v1`), posting one consolidated review with inline comments
+- **`.github/PULL_REQUEST_TEMPLATE.md`** and **`REVIEW_EXCEPTIONS.md`** — the surrounding workflow scaffolding
+- **Stack-specific tooling**:
+  - **bun-ts**: `package.json`, `biome.json`, `knip.json`, `tsconfig.json`, husky hooks (pre-commit + post-checkout), reusable utility scripts (`move.ts`, `db-cleanup.ts`)
+  - **python**: `pyproject.toml`, `ruff.toml`, `.pre-commit-config.yaml`
+- **Plugin + MCP installs** (via `claude` CLI): TypeScript LSP / Pyright LSP, plus optional Chrome DevTools (plugin + MCP server)
+
+## Repo layout
 
 ```
 claude-starter/
@@ -124,20 +139,6 @@ claude-starter/
 │   └── python/                        # Python (uv + ruff + pytest) stack overlay
 └── examples/                          # filled-in CLAUDE.md examples per stack
 ```
-
-## Read this before extending
-
-The `docs/` folder is where the philosophy lives. If you're going to add a stack, change the skills, or modify the permissions baseline, start there:
-
-- [`docs/writing-claude-md.md`](docs/writing-claude-md.md) — how to structure a CLAUDE.md so the AI loads the right context
-- [`docs/writing-readme.md`](docs/writing-readme.md) — README is for humans, CLAUDE.md is for the AI
-- [`docs/writing-skills.md`](docs/writing-skills.md) — frontmatter, trigger phrases, when to make a skill vs. add to CLAUDE.md
-- [`docs/permissions.md`](docs/permissions.md) — allow-prefix patterns, settings vs. settings.local
-- [`docs/hooks.md`](docs/hooks.md) — pre-commit / post-checkout, husky vs. the `pre-commit` framework
-- [`docs/worktrees.md`](docs/worktrees.md) — git worktrees for parallel Claude sessions, per-worktree DBs and env files
-- [`docs/github-actions.md`](docs/github-actions.md) — the two-workflow pattern (CI + Claude reviewer)
-- [`docs/mcps.md`](docs/mcps.md) — registering MCP servers
-- [`docs/plugins.md`](docs/plugins.md) — marketplaces, LSP plugins, third-party plugins like Chrome DevTools
 
 ## Credit
 

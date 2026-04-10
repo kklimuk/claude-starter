@@ -120,28 +120,39 @@ ln -s .git/.env.development.local .env.development.local
 
 Now every worktree gets the same env file automatically, and if you update it once, every worktree sees the update. (Inkling does exactly this — see its [.env -> .git/.env symlink](../../inkling/.env).)
 
-### 3. Create a per-worktree database
+### 3. Create per-worktree dev and test databases
 
 When you opt into Postgres in `init.sh`, the post-checkout hook gets the per-worktree DB block enabled. Each worktree gets:
 
 - A random port between 3000–7000 written to `.env.local`
-- A unique database named after the worktree directory: `myproject_feature_a` for a worktree at `~/workspace/myproject-feature-a`
+- A unique **dev** database named after the worktree directory: `myproject_feature_a` for a worktree at `~/workspace/myproject-feature-a`
+- A matching **test** database (`myproject_feature_a_test`) written to `.env.test.local`, so `bun test` in a worktree doesn't clobber the dev DB
+- A `WORKTREE_NAME` env var in `.env.local` (only set when in a worktree, not the main checkout) so app code can tell which worktree it's running in
 
 ```sh
 if [ ! -e .env.local ]; then
   port=$(( (RANDOM % 4001) + 3000 ))
   wt_name=$(basename "$(pwd)")
   db_name="myproject_$(echo "$wt_name" | tr '-' '_')"
-  DATABASE_URL="postgres://localhost:5432/$db_name" bun bake db create 2>/dev/null || true
+  test_db_name="${db_name}_test"
+  bun bake db create "$db_name" 2>/dev/null || true
   DATABASE_URL="postgres://localhost:5432/$db_name" bun bake db migrate up 2>/dev/null || true
+  bun bake db create "$test_db_name" 2>/dev/null || true
+  DATABASE_URL="postgres://localhost:5432/$test_db_name" bun bake db migrate up 2>/dev/null || true
   cat > .env.local <<EOL
 PORT=$port
 DATABASE_URL=postgres://localhost:5432/$db_name
 EOL
+  if [ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ]; then
+    echo "WORKTREE_NAME=$wt_name" >> .env.local
+  fi
+  cat > .env.test.local <<EOL
+DATABASE_URL=postgres://localhost:5432/$test_db_name
+EOL
 fi
 ```
 
-So `git worktree add ../myproject-feature-a feature-a` gives you a feature-a checkout with its own dev server port, its own database, all migrations applied, all in one command. No manual setup.
+So `git worktree add ../myproject-feature-a feature-a` gives you a feature-a checkout with its own dev server port, its own dev DB, its own test DB, all migrations applied, all in one command. No manual setup.
 
 ## Cleaning up dead worktree databases
 

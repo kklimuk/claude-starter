@@ -1,11 +1,16 @@
 ---
 name: codebase-review
 description: "Full codebase audit — architecture, structural health, technical debt. Use when the user asks for a 'codebase review', 'architecture review', 'codebase audit', 'full review', 'engineering critique', 'refactoring plan', or 'what would a senior engineer think of this codebase'. Do NOT use for reviewing a PR or branch diff — that's /code-review."
+context: fork
+agent: general-purpose
+allowed-tools: Read Grep Glob Bash(git log:*) Bash(git status:*) Bash({{check_command}}:*)
 ---
 
 # Staff+ Code Review
 
 A systematic process for reviewing codebases the way a senior staff engineer would — focusing on structural health, maintainability, and the kinds of issues that compound over time rather than surface-level style nits.
+
+When running locally as a forked subagent, the main session does not see any files you read or any reasoning you do — only the final report you return. When running in CI, the workflow consumes the report directly. Either way, this is a serious, deliberate audit: take the time to read every relevant file, hold the whole picture in mind, and produce a thorough, considered report. The consumer of this report uses it as a worklist, so it must be complete and self-contained.
 
 ## Philosophy
 
@@ -65,6 +70,8 @@ Read every file in the source directory systematically. For each file, hold thes
 
 ### Phase 3: Prioritized Report
 
+Return the **complete formatted report** as your final message — not a summary or TL;DR. Whatever consumes the report (a main Claude session locally, or a CI workflow) uses it as a worklist, so it must be self-contained.
+
 Present findings organized by impact, not by file. Group them into tiers:
 
 1. **Critical** — will cause bugs or data loss (type mismatches, missing error handling on critical paths)
@@ -72,22 +79,28 @@ Present findings organized by impact, not by file. Group them into tiers:
 3. **Medium** — maintainability concerns (naming, ordering, import hygiene)
 4. **Low** — style preferences and minor improvements
 
-For each finding, explain the _why_. Don't just say "this is duplicated" — explain what goes wrong when the definitions drift apart. Don't just say "add a guard clause" — explain what input would cause the crash.
+For each finding, include enough detail that the main session can apply the fix without re-reading the entire codebase:
+
+- **Location** — exact `path:line` (or `path:start-end` for ranges); for cross-file findings, list every site
+- **Tier** — Critical / High / Medium / Low
+- **Current code** — short snippet(s) of the problematic code
+- **What and why** — explain the failure mode. Don't just say "this is duplicated" — explain what goes wrong when the definitions drift apart. Don't just say "add a guard clause" — explain what input would cause the crash.
+- **Fix** — specific code change, ideally as a before/after snippet, plus any cross-file changes that must happen in lockstep
+- **Surrounding context** — callers, related files, tests that may break, ordering constraints, anything else needed to apply the fix safely
+
+For pattern-level findings ("this pattern repeats across N files"), list all the affected files and call out the shared root cause once, rather than repeating the same finding N times.
 
 ### Phase 4: Iterative Fixing
 
-When the user asks to proceed with fixes, work through them methodically:
+The fix phase happens in whatever consumes this report — not here. Your job ends when you return the report. Locally, the main session will work through findings in tier order using your report as the worklist, re-reading specific files only as needed. In CI, the workflow will surface findings as appropriate. Either way, the consumer should be able to:
 
-1. **Fix in priority order** — critical first, then high, etc.
-2. **One concern per edit** — don't combine unrelated fixes in the same edit. This makes it easy to understand each change and revert if needed.
-3. **Preserve existing tests** — if a fix removes dead code that has tests, remove the tests too. If a fix changes behavior, update the tests to match.
-4. **After each batch of fixes, run the full verification chain:**
-   - Lint and auto-fix (the project's configured linter)
-   - Run affected tests (targeted) then full suite
-   - Type-check
-   - Dead code check if available
-5. **Update documentation** — after all code fixes are done, update CLAUDE.md, README.md, and any `.claude/rules/` files to reflect the changes. New commands, changed defaults, added pipeline phases, new CLI flags, and modified data models should all be reflected in docs. This is the last step before considering the review complete.
-6. **Respect the project's own conventions** — read CLAUDE.md / contributing guides and follow them. Don't introduce new tooling the project doesn't already use. If the project uses `bun test`, don't suggest vitest. If the project uses Biome, don't suggest ESLint.
+1. Fix in priority order, one concern per edit
+2. Preserve or update tests as needed
+3. Run lint, tests, type-check, and dead code check after each batch (e.g. `{{check_command}}` + `{{test_command}}`)
+4. Update CLAUDE.md / README.md / `.claude/rules/` to reflect any changes
+5. Respect the project's own conventions (use what CLAUDE.md prescribes — don't introduce new tooling)
+
+Your job is to make sure the report has enough information for that to be straightforward.
 
 ## What NOT To Do
 

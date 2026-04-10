@@ -23,7 +23,7 @@ Permissions match by prefix. Use `:*` to allow any suffix:
       "Bash(bun run check:*)",
       "Bash(bun test:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m ':*)",
+      "Bash(git commit:*)",
       "Bash(gh pr:*)",
       "WebSearch",
       "WebFetch(domain:github.com)"
@@ -46,7 +46,7 @@ The `common/.claude/settings.json` shipped with this template includes:
 
 - **Build/test/lint** for the chosen stack (`bun run check:*`, `bun test:*`, etc.)
 - **`gh` CLI** read-mostly subcommands (`gh pr:*`, `gh run:*`, `gh issue:*`, `gh auth:*`)
-- **Git everyday verbs** that aren't destructive (`git add:*`, `git commit -m ':*`, `git stash:*`, `git checkout:*`)
+- **Git everyday verbs** that aren't destructive (`git add:*`, `git commit:*`, `git stash:*`, `git checkout:*`, `git status:*`, `git diff:*`, `git log:*`, `git show:*`, `git worktree:*`)
 - **Push to origin** (but not `--force`)
 - **`WebSearch`** unconditionally
 - **`WebFetch`** for common-sense documentation domains (github.com, npmjs.com)

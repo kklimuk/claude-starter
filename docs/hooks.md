@@ -21,14 +21,14 @@ The standard set:
 
 ## Two pre-commit philosophies
 
-### Full-run (simple, slower)
+### Full-run (simple, slower) — what the template ships
 
 ```sh
 #!/bin/sh
 bun run check && bun test
 ```
 
-This is `inkling/.husky/pre-commit`. Runs every check on the whole project every commit. Reliable, no edge cases, but a 10-second commit is annoying when you commit often.
+Runs every check on the whole project every commit. Reliable, no edge cases, no script to maintain. On a well-scoped project this stays under a few seconds; on a large one it's slower, and that's the trade-off you accept for not having to think about it. The bun-ts stack ships this variant.
 
 ### Staged-files (fast, more code)
 
@@ -56,9 +56,7 @@ if [ -n "$STAGED_TS" ]; then
 fi
 ```
 
-This is `yna/.husky/pre-commit`. Lints and types only the staged files, which keeps a commit under a second on most projects. Trade-off: more script complexity, and a few edge cases (a deletion in file A causing a type error in file B is missed by staged-tsc — but CI catches it).
-
-The bun-ts stack in this template ships the staged-files variant by default. If you prefer the simple version, replace `.husky/pre-commit` with the two-line full-run script.
+Lints and types only the staged files, which keeps a commit under a second on most projects. Trade-off: more script complexity, and a few edge cases (a deletion in file A causing a type error in file B is missed by staged-tsc — but CI catches it). Use this variant when the full-run version gets slow enough that you notice it.
 
 ## What `post-checkout` is for
 
@@ -86,21 +84,30 @@ for env_file in .env .env.development.local; do
   fi
 done
 
-# Per-worktree DB (only if Postgres is in the project)
+# Per-worktree dev + test DBs (only if Postgres is in the project)
 if [ ! -e .env.local ]; then
   port=$(( (RANDOM % 4001) + 3000 ))
   wt_name=$(basename "$(pwd)")
   db_name="{{db_prefix}}_$(echo "$wt_name" | tr '-' '_')"
-  DATABASE_URL="postgres://localhost:5432/$db_name" bun bake db create 2>/dev/null || true
+  test_db_name="${db_name}_test"
+  bun bake db create "$db_name" 2>/dev/null || true
   DATABASE_URL="postgres://localhost:5432/$db_name" bun bake db migrate up 2>/dev/null || true
+  bun bake db create "$test_db_name" 2>/dev/null || true
+  DATABASE_URL="postgres://localhost:5432/$test_db_name" bun bake db migrate up 2>/dev/null || true
   cat > .env.local <<EOL
 PORT=$port
 DATABASE_URL=postgres://localhost:5432/$db_name
 EOL
+  if [ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ]; then
+    echo "WORKTREE_NAME=$wt_name" >> .env.local
+  fi
+  cat > .env.test.local <<EOL
+DATABASE_URL=postgres://localhost:5432/$test_db_name
+EOL
 fi
 ```
 
-The `{{db_prefix}}_` placeholder is replaced by `init.sh` with your project name when you opt into Postgres.
+The `{{db_prefix}}_` placeholder is replaced by `init.sh` with your project name when you opt into Postgres. Each worktree gets both a dev DB (`myproject_feature_a`) and a test DB (`myproject_feature_a_test`), so `bun test` inside a worktree doesn't share state with `bun run dev`.
 
 If you don't use worktrees, the env-symlinking and per-DB sections are inert (the hook is a no-op when run from a normal checkout in your only working directory).
 

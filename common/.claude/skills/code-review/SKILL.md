@@ -1,11 +1,16 @@
 ---
 name: code-review
 description: "PR-scoped code review — reviews what changed on the current branch. Use when the user says 'review', 'code review', 'review my PR', 'review my changes', 'look at my diff', 'what could this break', or any variation of wanting feedback on recent changes. Do NOT use for full codebase audits — that's /codebase-review."
+context: fork
+agent: general-purpose
+allowed-tools: Read Grep Glob Bash(git diff:*) Bash(git log:*) Bash(git status:*) Bash(git show:*)
 ---
 
 # Code Review
 
 Review the changes on the current branch the way a teammate would before approving a PR — focused, context-aware, and concerned with what these specific changes might break.
+
+When running locally as a forked subagent, the main session does not see any files you read or any reasoning you do — only the final report you return. When running in CI (e.g. via `claude-code-action`), the workflow takes the report and turns it into GitHub PR review comments. Either way, take your time, read everything you need, and produce a thorough, actionable report. The consumer of this report uses it as a worklist, so it must be complete and self-contained.
 
 ## Scope
 
@@ -24,7 +29,7 @@ Before reviewing, read CLAUDE.md to understand:
 - **Subsystems**: any sections covering database, real-time, auth, background jobs, etc.
 - **Testing**: what `bun run check` / `npm test` / `pytest` cover, what's gated in CI
 
-This context is critical for catching issues that a generic reviewer would miss. The Claude PR reviewer in CI won't have this context unless CLAUDE.md provides it, so this review should surface project-specific concerns.
+This context is critical for catching issues that a generic reviewer would miss. The `claude-code-action` in CI won't have this context unless CLAUDE.md provides it, so this review should surface project-specific concerns.
 
 ## What to Review
 
@@ -64,6 +69,8 @@ Check against CLAUDE.md conventions:
 
 ## Report Format
 
+Return the **complete formatted report** as your final message — not a summary or TL;DR. Whatever consumes the report (a main Claude session locally, or a CI workflow that posts inline GitHub PR comments) uses it as a worklist, so it must be self-contained.
+
 Structure the review as a PR comment would read:
 
 ### Summary
@@ -72,11 +79,14 @@ One paragraph: what the PR does, whether the approach is sound, and your overall
 
 ### Issues
 
-For each issue, include:
-- **File and line** — exact location
+For each issue, include enough detail that the main session can apply the fix without re-reading the entire file:
+
+- **File and line** — exact `path:line` (or `path:start-end` for ranges)
 - **Severity** — 🔴 must fix, 🟡 should fix, 🔵 nit/suggestion
-- **What and why** — the problem and its consequence
-- **Suggestion** — specific fix or alternative approach
+- **Current code** — short snippet of the problematic code (not just a description)
+- **What and why** — the problem and the concrete failure scenario
+- **Fix** — specific code change, ideally as a before/after snippet
+- **Surrounding context** — anything else the fixer needs to know: callers (`also called from Pages.ts:142`), related files that must change in lockstep, tests that may break, migration ordering concerns
 
 ### What Could Break
 
@@ -98,4 +108,4 @@ Call out things done well — good test coverage, clean extraction, thoughtful e
 
 ## After the Review
 
-When the user asks to fix findings, apply fixes in severity order. Run the project's check command (`{{check_command}}`) and tests after each fix to verify nothing broke.
+The fix phase (or PR-comment-posting phase) happens in whatever consumes this report — not here. Your job ends when you return the report. Make sure it has enough information for that consumer to act on findings without re-reading the codebase. Locally, the main session will work through findings in severity order, re-reading specific files only as needed, and run `{{check_command}}` + `{{test_command}}` after each fix. In CI, the workflow will turn each finding into a GitHub PR review comment.
